@@ -1523,10 +1523,16 @@ function identityBrief(prompt: string, bible?: string): string {
     new RegExp(`\\b${escapeRe(entry.name)}\\b`, "i").test(prompt),
   );
   if (matched.length === 0) return "";
-  return matched
-    .slice(0, 3)
-    .map((entry) => `${entry.name} ${clip(dedupeWords(entry.traits.replace(/\.$/, "")), 95)}`)
+  const shown = matched.slice(0, 3);
+  const briefs = shown
+    .map((entry) => `${entry.name} is ${clip(dedupeWords(entry.traits.replace(/\.$/, "")), 95)}`)
     .join("; ");
+  // An explicit headcount is the only thing that reliably stopped Flux drawing
+  // a character twice: naming a person and then describing them again read as
+  // "two similar people", and panels came back with twin Yukis and two
+  // Mitsurus. A number in front of the cast removes that ambiguity.
+  const count = shown.length === 1 ? "exactly one person" : `exactly ${["", "one", "two", "three"][shown.length]} people`;
+  return `${count} in this frame: ${briefs}`;
 }
 
 /**
@@ -1585,7 +1591,7 @@ export function composeImagePrompt(
     identity,
     peopled ? STAGING_GUARD : "",
     peopled ? FRAMING_GUARD : "",
-    peopled ? "only these people, each drawn once as a whole separate body" : "empty environment, no people in frame",
+    peopled ? "each person drawn once only, no duplicates or twins" : "empty environment, no people in frame",
     BACKGROUND_GUARD,
     "natural clear lighting, no text anywhere",
     STYLE_TAIL,
