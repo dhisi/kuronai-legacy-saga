@@ -1051,10 +1051,13 @@ const TEXT_TRIGGERS: [RegExp, string][] = [
     "illustration",
   ],
   [
-    /\b(says?|saying|shouts?|shouting|whispers?|whispering|yells?|screams?|mutters?|exclaims?)\s*[,:]?\s*["“][^"”]{0,160}["”']/gi,
+    /\b(says?|saying|said|speaks?|speaking|spoke|tells?|telling|replies|replied|answers?|answered|adds?|added|asks?|asking|states?|declares?|continues?|shouts?|shouting|whispers?|whispering|yells?|screams?|mutters?|exclaims?)\b[^"“]{0,40}["“][^"”]{0,400}(?:["”']|$)/gi,
     "",
   ],
-  [/"[^"]{0,120}"/g, ""],
+  [/"[^"]{0,400}"/g, ""],
+  // An unterminated quote (the writer's sentence was cut mid-speech) used to
+  // survive every rule and reached the renderer as lettering.
+  [/["“][^"”]{0,400}$/g, ""],
   // Single quotes: ONLY a genuine quoted span. The old /'[^']{2,120}'/ treated
   // two possessive apostrophes as a pair and deleted everything between them —
   // "Henan's ... demon's" lost the whole middle of the description. An opening
@@ -1397,7 +1400,21 @@ export function ageOf(traits: string): string {
     t,
   );
   if (num) {
-    return num[2] ? `${num[1]}-to-${num[2]}-year-old` : `${num[1]}-year-old`;
+    const n = Number(num[1]);
+    const look =
+      n >= 65
+        ? "elderly, deeply wrinkled, grey-haired"
+        : n >= 50
+          ? "visibly older, lined face, greying hair"
+          : n >= 38
+            ? "clearly middle-aged, faint lines on the face"
+            : n >= 25
+              ? "a grown adult"
+              : n >= 19
+                ? "a young adult"
+                : "";
+    const label = num[2] ? `${num[1]}-to-${num[2]}-year-old` : `${num[1]}-year-old`;
+    return look ? `${label} ${look}` : label;
   }
   const bands: [RegExp, string][] = [
     [
