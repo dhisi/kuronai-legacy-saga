@@ -1541,15 +1541,25 @@ function identityBrief(prompt: string, bible?: string): string {
   );
   if (matched.length === 0) return "";
   const shown = matched.slice(0, 3);
-  const briefs = shown
-    .map((entry) => `${entry.name} is ${clip(dedupeWords(entry.traits.replace(/\.$/, "")), 95)}`)
-    .join("; ");
-  // An explicit headcount is the only thing that reliably stopped Flux drawing
-  // a character twice: naming a person and then describing them again read as
-  // "two similar people", and panels came back with twin Yukis and two
-  // Mitsurus. A number in front of the cast removes that ambiguity.
-  const count = shown.length === 1 ? "exactly one person" : `exactly ${["", "one", "two", "three"][shown.length]} people`;
-  return `${count} in this frame: ${briefs}`;
+  const folded = prompt.toLocaleLowerCase();
+  const briefs = shown.map((entry) => {
+    // DESCRIBE EACH PERSON ONCE. The writing model already weaves a character's
+    // hair, eyes and outfit into the scene sentence; repeating those traits here
+    // read to Flux as a second, similar-looking person, and panels came back
+    // with twin Kais and two Harutos. So when the scene already carries the
+    // traits, this list contributes the NAME only.
+    const traits = dedupeWords(entry.traits.replace(/\.$/, ""));
+    const tokens = traits
+      .toLocaleLowerCase()
+      .match(/\b[a-z]{4,}\b/g)
+      ?.filter((w) => !/(year|male|female|build|expression|posture|young|old)/.test(w));
+    const already = (tokens ?? []).filter((w) => folded.includes(w)).length;
+    return already >= 2 ? entry.name : `${entry.name} is ${clip(traits, 95)}`;
+  });
+  // An explicit headcount is what stopped the renderer inventing extra copies.
+  const count =
+    shown.length === 1 ? "exactly one person" : `exactly ${["", "one", "two", "three"][shown.length]} people`;
+  return `${count} in this frame: ${briefs.join("; ")}`;
 }
 
 /**
