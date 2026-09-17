@@ -1659,6 +1659,9 @@ export function composeImagePrompt(
   // established, so the picture is a story moment rather than a character study.
   const parts = [
     `${STYLE_LEAD} ${beat.lead}`,
+    // Stated early: signage, banners and captions kept creeping in when this
+    // sat at the very end of a long prompt.
+    "completely wordless picture, no writing, signs, captions or letters anywhere",
     continuity ? clip(`Same continuing scene: ${continuity}`, 200) : "",
     clip(beat.rest, Math.max(120, SCENE_BUDGET - beat.lead.length)),
     identity,
