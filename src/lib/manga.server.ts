@@ -1644,7 +1644,10 @@ export function composeImagePrompt(
   bible = bible ? normalizeLeadCharacter(bible) : bible;
   const clean = stripPromptMeta(dedupeWords(prompt));
   const withCast = enforceLineCast(clean, line, bible);
-  const fixed = stripPromptMeta(enforceGender(sanitizePrompt(withCast), bible));
+  const fixed = collapseRepeatedIdentity(
+    stripPromptMeta(enforceGender(sanitizePrompt(withCast), bible)),
+    bible,
+  );
   const peopled = hasPeople(fixed, bible);
   const beat = openingBeat(fixed);
   // Exactly ONE identity description per character, and only when someone is
