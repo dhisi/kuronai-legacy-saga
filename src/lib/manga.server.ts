@@ -1338,10 +1338,12 @@ export function enforceGender(prompt: string, bible?: string): string {
   for (const e of present) {
     const g = genderOf(e.traits)!;
     const noun = g === "male" ? "male" : "female";
-    const age = ageOf(e.traits);
-    // Natural phrasing ("a 23-year-old man"), not a data field
-    // ("male, exactly 23 years old"), which Flux drew as caption text.
-    const tag = age ? `a ${age} ${noun === "male" ? "man" : "woman"}` : `a ${noun === "male" ? "man" : "woman"}`;
+    // Short label only ("23-year-old"). The full look description
+    // ("visibly older, lined face, greying hair") made the tag read as
+    // "a 60-year-old visibly older, lined face, greying hair man".
+    const age = ageLabel(e.traits);
+    const person = noun === "male" ? "man" : "woman";
+    const tag = age ? `a ${age} ${person}` : `a ${person}`;
     out = out.replace(
       new RegExp(`\\b${escapeRe(e.name)}\\b(?!\\s*\\((male|female)\\b)`, "i"),
       `${e.name} (${tag})`,
