@@ -1338,10 +1338,12 @@ export function enforceGender(prompt: string, bible?: string): string {
   for (const e of present) {
     const g = genderOf(e.traits)!;
     const noun = g === "male" ? "male" : "female";
-    const age = ageOf(e.traits);
-    // Natural phrasing ("a 23-year-old man"), not a data field
-    // ("male, exactly 23 years old"), which Flux drew as caption text.
-    const tag = age ? `a ${age} ${noun === "male" ? "man" : "woman"}` : `a ${noun === "male" ? "man" : "woman"}`;
+    // Short label only ("23-year-old"). The full look description
+    // ("visibly older, lined face, greying hair") made the tag read as
+    // "a 60-year-old visibly older, lined face, greying hair man".
+    const age = ageLabel(e.traits);
+    const person = noun === "male" ? "man" : "woman";
+    const tag = age ? `a ${age} ${person}` : `a ${person}`;
     out = out.replace(
       new RegExp(`\\b${escapeRe(e.name)}\\b(?!\\s*\\((male|female)\\b)`, "i"),
       `${e.name} (${tag})`,
@@ -1356,6 +1358,47 @@ export function enforceGender(prompt: string, bible?: string): string {
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Just the age words ("23-year-old", "elderly"), never the look sentence. */
+export function ageLabel(traits: string): string {
+  const num = /\b(\d{1,2})\s*(?:-|\s)?year[s]?[- ]old\b/.exec(traits.toLowerCase());
+  if (num) return `${num[1]}-year-old`;
+  const t = traits.toLowerCase();
+  if (/\b(elderly|old|aged|grand(mother|father|ma|pa)|buzurg|budhi|budha)\b/.test(t)) return "elderly";
+  if (/\b(middle[- ]aged|forties|fifties|40s|50s)\b/.test(t)) return "middle-aged";
+  if (/\b(teen(age[rd]?)?|adolescent|schoolboy|schoolgirl)\b/.test(t)) return "teenage";
+  if (/\b(child|kid|little (boy|girl)|toddler)\b/.test(t)) return "young";
+  return "";
+}
+
+/**
+ * One body per person. The writing model often repeats a character right after
+ * their name — "Kai (a 19-year-old man), a 19-year-old young man with a short
+ * black undercut, ..." — and Flux drew a separate figure for each mention, so
+ * panels came back with twins. The repeated appositive is dropped; the traits
+ * still reach the renderer once through the identity brief.
+ */
+export function collapseRepeatedIdentity(prompt: string, bible?: string): string {
+  if (!bible) return prompt;
+  let out = prompt;
+  for (const entry of parseBible(bible)) {
+    const name = escapeRe(entry.name);
+    // Name (tag), <a/an ... man|woman|boy|girl ...>,  -> Name (tag),
+    out = out.replace(
+      new RegExp(
+        `(\\b${name}\\b\\s*\\([^)]*\\))\\s*,\\s*(?:an?|the)\\s+[^.;]{0,180}?\\b(?:man|woman|boy|girl|male|female|person)\\b[^.;]{0,120}?(?=\\s*[,.;]|$)`,
+        "gi",
+      ),
+      "$1",
+    );
+    // A bare second mention of the same identity phrasing right after the name.
+    out = out.replace(
+      new RegExp(`(\\b${name}\\b)\\s*,\\s*(?:an?|the)\\s+\\d{1,2}-year-old\\b[^.;]{0,150}?(?=\\s*[,.;]|$)`, "gi"),
+      "$1",
+    );
+  }
+  return out.replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s{2,}/g, " ");
 }
 
 /**
@@ -1601,7 +1644,10 @@ export function composeImagePrompt(
   bible = bible ? normalizeLeadCharacter(bible) : bible;
   const clean = stripPromptMeta(dedupeWords(prompt));
   const withCast = enforceLineCast(clean, line, bible);
-  const fixed = stripPromptMeta(enforceGender(sanitizePrompt(withCast), bible));
+  const fixed = collapseRepeatedIdentity(
+    stripPromptMeta(enforceGender(sanitizePrompt(withCast), bible)),
+    bible,
+  );
   const peopled = hasPeople(fixed, bible);
   const beat = openingBeat(fixed);
   // Exactly ONE identity description per character, and only when someone is
@@ -1613,6 +1659,9 @@ export function composeImagePrompt(
   // established, so the picture is a story moment rather than a character study.
   const parts = [
     `${STYLE_LEAD} ${beat.lead}`,
+    // Stated early: signage, banners and captions kept creeping in when this
+    // sat at the very end of a long prompt.
+    "completely wordless picture, no writing, signs, captions or letters anywhere",
     continuity ? clip(`Same continuing scene: ${continuity}`, 200) : "",
     clip(beat.rest, Math.max(120, SCENE_BUDGET - beat.lead.length)),
     identity,

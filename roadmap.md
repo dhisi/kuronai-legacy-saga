@@ -10,5 +10,9 @@
 - [x] Fix long-run quality threshold: global verification numbering, queued image
       reviews, independent review cooldown, and rejection of known-bad redraws
 - [x] Lock the main character as an unmarried 23-year-old adult man in every panel
+- [x] Stop twin/duplicate figures: a character's repeated description right after
+      their name is collapsed, so each person is described exactly once
+- [x] Clean age wording ("a 60-year-old man", not the whole look sentence)
+- [x] Wordless-picture rule stated early, so signage/captions stop appearing
 - [ ] Reference-image character locking — not possible on Flux.1 Schnell (text-only);
       needs an image model with reference/character conditioning
