@@ -1360,6 +1360,47 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Just the age words ("23-year-old", "elderly"), never the look sentence. */
+export function ageLabel(traits: string): string {
+  const num = /\b(\d{1,2})\s*(?:-|\s)?year[s]?[- ]old\b/.exec(traits.toLowerCase());
+  if (num) return `${num[1]}-year-old`;
+  const t = traits.toLowerCase();
+  if (/\b(elderly|old|aged|grand(mother|father|ma|pa)|buzurg|budhi|budha)\b/.test(t)) return "elderly";
+  if (/\b(middle[- ]aged|forties|fifties|40s|50s)\b/.test(t)) return "middle-aged";
+  if (/\b(teen(age[rd]?)?|adolescent|schoolboy|schoolgirl)\b/.test(t)) return "teenage";
+  if (/\b(child|kid|little (boy|girl)|toddler)\b/.test(t)) return "young";
+  return "";
+}
+
+/**
+ * One body per person. The writing model often repeats a character right after
+ * their name — "Kai (a 19-year-old man), a 19-year-old young man with a short
+ * black undercut, ..." — and Flux drew a separate figure for each mention, so
+ * panels came back with twins. The repeated appositive is dropped; the traits
+ * still reach the renderer once through the identity brief.
+ */
+export function collapseRepeatedIdentity(prompt: string, bible?: string): string {
+  if (!bible) return prompt;
+  let out = prompt;
+  for (const entry of parseBible(bible)) {
+    const name = escapeRe(entry.name);
+    // Name (tag), <a/an ... man|woman|boy|girl ...>,  -> Name (tag),
+    out = out.replace(
+      new RegExp(
+        `(\\b${name}\\b\\s*\\([^)]*\\))\\s*,\\s*(?:an?|the)\\s+[^.;]{0,180}?\\b(?:man|woman|boy|girl|male|female|person)\\b[^.;]{0,120}?(?=\\s*[,.;]|$)`,
+        "gi",
+      ),
+      "$1",
+    );
+    // A bare second mention of the same identity phrasing right after the name.
+    out = out.replace(
+      new RegExp(`(\\b${name}\\b)\\s*,\\s*(?:an?|the)\\s+\\d{1,2}-year-old\\b[^.;]{0,150}?(?=\\s*[,.;]|$)`, "gi"),
+      "$1",
+    );
+  }
+  return out.replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s{2,}/g, " ");
+}
+
 /**
  * Deterministic character lock: whichever API key renders this scene, the same
  * fixed traits are appended verbatim, so characters never drift between shots.
