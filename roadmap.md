@@ -16,3 +16,5 @@
 - [x] Wordless-picture rule stated early, so signage/captions stop appearing
 - [ ] Reference-image character locking — not possible on Flux.1 Schnell (text-only);
       needs an image model with reference/character conditioning
+- [ ] Run the complete 00:00–05:05 script and verify every image against its
+      exact timestamped line and final renderer prompt; rerun every mismatch
